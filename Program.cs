@@ -32,9 +32,9 @@ if (string.IsNullOrEmpty(builder.Environment.WebRootPath))
 
 var app = builder.Build();
 
-// PostgreSQL connection string - čita iz environment varijable ili koristi default
+// PostgreSQL connection string
 var connStr = Environment.GetEnvironmentVariable("DATABASE_URL") 
-    ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres";
+    ?? "Host=172.17.0.1;Port=3000;Database=postgres;Username=postgres;Password=Nt0nww9wBu799C321fv4DFbWNMT9G137MTUUzrycQHvQaCfhjO18fQdDPqCJUCH1";
 Console.WriteLine($"[ProgramCloud] Database: PostgreSQL");
 InitDatabase(connStr);
 

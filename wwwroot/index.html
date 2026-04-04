@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProgramCloud - Upravljanje blagajnama</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+.topbar{background:#2c3e50;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
+.topbar h1{font-size:18px;font-weight:600}
+.topbar .user-info{display:flex;align-items:center;gap:12px;font-size:13px}
+.topbar .user-info span{color:#bdc3c7}
+.btn-logout{padding:4px 12px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px}
+.layout{display:flex;min-height:calc(100vh - 44px)}
+.sidebar{width:200px;background:#34495e;padding:10px 0;flex-shrink:0}
+.sidebar a{display:block;padding:10px 20px;color:#bdc3c7;text-decoration:none;font-size:14px;border-left:3px solid transparent}
+.sidebar a:hover{background:#3d566e;color:#fff}
+.sidebar a.active{background:#3d566e;color:#fff;border-left-color:#3498db}
+.sidebar .sub{padding-left:35px;font-size:13px}
+.sidebar .section{padding:8px 20px;color:#7f8c8d;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:10px}
+.main{flex:1;padding:20px;overflow-x:auto}
+.stats{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:200px;padding:15px 20px;border-radius:8px;color:#fff;position:relative}
+.stat-card .number{font-size:32px;font-weight:bold}
+.stat-card .label{font-size:13px;opacity:0.9}
+.stat-card.blue{background:linear-gradient(135deg,#3498db,#2980b9)}
+.stat-card.green{background:linear-gradient(135deg,#27ae60,#229954)}
+.stat-card.orange{background:linear-gradient(135deg,#f39c12,#e67e22)}
+.stat-card.red{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.card{background:#fff;border-radius:6px;padding:20px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.card h3{font-size:15px;color:#2c3e50;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #3498db}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;text-align:left;font-size:13px;border-bottom:1px solid #ecf0f1}
+th{background:#f8f9fa;color:#2c3e50;font-weight:600;position:sticky;top:0}
+tr:hover{background:#f5f8ff}
+input,select{padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px}
+.form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.btn{padding:6px 14px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500}
+.btn-primary{background:#3498db;color:#fff}.btn-success{background:#27ae60;color:#fff}
+.btn-danger{background:#e74c3c;color:#fff}.btn-warning{background:#f39c12;color:#fff}
+.btn-sm{padding:3px 8px;font-size:12px}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-success{background:#d4edda;color:#155724}.badge-danger{background:#f8d7da;color:#721c24}
+.hidden{display:none !important}
+</style>
+<style>
+.tabs{display:flex;border-bottom:2px solid #ddd;margin-bottom:15px}
+.tab{padding:10px 20px;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500}
+.tab:hover{color:#333;background:#f8f9fa}.tab.active{color:#3498db;border-bottom-color:#3498db;font-weight:600}
+.detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.detail-header h2{font-size:18px;color:#3498db;margin:0}
+.back-link{color:#666;font-size:13px;cursor:pointer;text-decoration:none;margin-left:10px}.back-link:hover{color:#333}
+.detail-row{display:flex;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.detail-row .dlabel{width:200px;font-weight:600;color:#555}.detail-row .dvalue{flex:1;color:#333}
+.login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,#2c3e50,#3498db)}
+.login-box{background:#fff;padding:40px;border-radius:10px;width:380px;box-shadow:0 10px 30px rgba(0,0,0,0.2)}
+.login-box h2{color:#2c3e50;text-align:center;margin-bottom:25px;font-size:22px}
+.login-box input{width:100%;margin-bottom:12px;padding:12px;font-size:14px;border:1px solid #ddd;border-radius:6px}
+.login-box button{width:100%;padding:12px;font-size:15px;background:#3498db;color:#fff;border:none;border-radius:6px;cursor:pointer}
+.login-box button:hover{background:#2980b9}
+.login-error{color:#e74c3c;font-size:13px;text-align:center;margin-top:10px}
+.order-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;justify-content:center;align-items:center}
+.order-modal{background:#fff;border-radius:8px;padding:0;width:700px;max-height:90vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,0.3);position:relative}
+.order-modal .modal-close-btn{position:sticky;top:0;right:0;z-index:10;text-align:right;padding:10px 15px;background:#fff}
+.order-modal .modal-close-btn button{background:#e74c3c;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500}
+.order-modal .modal-close-btn button:hover{background:#c0392b}
+.receipt{padding:20px 40px 30px;font-family:'Segoe UI',sans-serif}
+.receipt .receipt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.receipt .company-side{flex:1}
+.receipt .company-name{font-size:18px;font-weight:bold;margin-bottom:8px}
+.receipt .company-info{font-size:12px;color:#555;line-height:1.7}
+.receipt .customer-box{border:1px solid #ccc;padding:10px 14px;font-size:12px;line-height:1.7;min-width:220px;margin-left:30px;margin-top:45px}
+.receipt .receipt-title{display:flex;justify-content:space-between;align-items:center;margin:15px 0;font-size:16px;font-weight:bold}
+.receipt table.items-table{width:100%;border-collapse:collapse;margin:10px 0}
+.receipt table.items-table th{background:#f0f0f0;border-top:1px solid #999;border-bottom:1px solid #999;padding:6px 8px;font-size:12px;font-weight:bold}
+.receipt table.items-table td{padding:5px 8px;font-size:12px;border-bottom:1px solid #eee}
+.receipt .tax-section{margin-top:10px}
+.receipt .tax-table{width:auto;margin-left:auto;border-collapse:collapse}
+.receipt .tax-table th,.receipt .tax-table td{padding:4px 12px;font-size:12px}
+.receipt .total-line{text-align:right;font-size:22px;font-weight:bold;margin:10px 0;padding:8px 0;border-top:2px solid #333}
+.receipt .footer{margin-top:15px;font-size:12px;color:#555;line-height:1.8}
+.receipt .footer .zki-jir{font-size:11px;color:#888;font-family:monospace}
+@media(max-width:768px){.sidebar{display:none}.stats{flex-direction:column}.form-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="loginPage" class="login-wrap"><div class="login-box"><h2>&#9729; ProgramCloud</h2>
+<input type="text" id="loginUser" placeholder="Korisnicko ime" autofocus>
+<input type="password" id="loginPass" placeholder="Lozinka" onkeydown="if(event.key==='Enter')doLogin()">
+<button onclick="doLogin()">Prijava</button><div class="login-error" id="loginError"></div></div></div>
+<div id="mainApp" class="hidden">
+<div class="topbar"><h1>PROGRAMCLOUD - BACKOFFICE</h1><div class="user-info"><span id="userInfo"></span><button class="btn-logout" onclick="doLogout()">Odjava</button></div></div>
+<div class="layout"><div class="sidebar">
+<a href="#" class="active" onclick="showPage('dashboard',this)">&#127968; Administracija</a>
+<a href="#" onclick="showPage('companies',this)" id="navCompanies">&#128203; Poduzeca, obrti</a>
+<a href="#" onclick="showPage('users',this)" id="navUsers">&#128100; Korisnici</a>
+<div class="section">Izvjestaji</div>
+<a href="#" class="sub" onclick="showPage('revenue',this)">&#128202; Promet</a>
+<a href="#" class="sub" onclick="showPage('orders',this)">&#129534; Racuni</a></div>
+<div class="main">
+<div id="page-dashboard">
+<div class="form-row" style="margin-bottom:15px"><label>Od datuma</label><input type="date" id="dashFrom"><button class="btn btn-primary" onclick="loadDashboard()">Osvjezi</button></div>
+<div class="stats" id="statsCards"></div>
+<div style="display:flex;gap:15px;flex-wrap:wrap">
+<div class="card" style="flex:1;min-width:300px"><h3>Ne fiskalizirani racuni</h3>
+<div class="form-row"><select id="nfPeriod"><option value="24h">Ne fiskalizirani 24-48h</option><option value="4h">4h</option><option value="1h">1h</option></select>
+<button class="btn btn-danger" onclick="loadNonFiscalized()">Filtriraj</button></div>
+<table><thead><tr><th>Naziv</th><th>OIB</th><th>PP</th><th>Nefisk.</th></tr></thead><tbody id="nfTable"></tbody></table></div>
+<div class="card" style="flex:1;min-width:300px"><h3>Istek registracije</h3><div style="max-height:400px;overflow:auto">
+<table><thead><tr><th>Naziv</th><th>OIB</th><th>PP</th><th>Trajanje do</th><th>Istice za</th></tr></thead><tbody id="regTable"></tbody></table></div></div></div></div>
+<div id="page-companies" class="hidden">
+<div class="card" id="companyListCard"><h3>PODUZECA</h3>
+<div class="form-row"><label>Filter</label><input type="text" id="compFilter" placeholder="Pretrazi..." style="width:200px">
+<label>Od datuma</label><input type="date" id="compFromDate">
+<button class="btn btn-primary" onclick="loadCompaniesOverview()">&#128269; Trazi</button>
+<button class="btn btn-success" onclick="showAddCompany()">+ Dodaj novo</button></div>
+<div id="addCompanyForm" class="hidden" style="background:#f8f9fa;padding:12px;border-radius:6px;margin-bottom:10px">
+<div class="form-row"><input type="text" id="newOIB" placeholder="OIB" style="width:120px">
+<input type="text" id="newCompanyName" placeholder="Naziv firme" style="flex:1">
+<input type="text" id="newCompanyAddr" placeholder="Adresa"><input type="text" id="newCompanyCity" placeholder="Grad">
+<button class="btn btn-success" onclick="addCompany()">Spremi</button><button class="btn btn-danger" onclick="hideAddCompany()">Odustani</button></div></div>
+<div style="max-height:500px;overflow:auto"><table><thead><tr><th>Naziv</th><th>PP - NU</th><th>Zad.racun</th><th>Nefiskal.</th><th>Regist. do</th><th>Edit</th></tr></thead>
+<tbody id="compTable"></tbody></table></div></div>
+<div id="companyDetail" class="hidden"></div></div>
+<div id="page-users" class="hidden"><div class="card"><h3>KORISNICI</h3>
+<div class="form-row"><label>Filter</label><input type="text" id="userFilter" placeholder="Pretrazi...">
+<button class="btn btn-primary" onclick="loadUsers()">&#128269; Trazi</button>
+<button class="btn btn-success" onclick="showAddUser()">+ Dodaj novog korisnika</button></div>
+<div id="addUserForm" class="hidden" style="background:#f8f9fa;padding:12px;border-radius:6px;margin-bottom:10px">
+<div class="form-row"><input type="text" id="newUsername" placeholder="Korisnicko ime">
+<input type="password" id="newPassword" placeholder="Lozinka"><input type="text" id="newDisplayName" placeholder="Ime i prezime">
+<label style="font-size:13px"><input type="checkbox" id="newIsAdmin"> Admin</label>
+<button class="btn btn-success" onclick="addUser()">Spremi</button><button class="btn btn-danger" onclick="hideAddUser()">Odustani</button></div></div>
+<table><thead><tr><th>Prezime/Ime</th><th>Korisnicko ime</th><th>Firme</th><th>Edit</th></tr></thead><tbody id="userTable"></tbody></table></div></div>
+<div id="page-revenue" class="hidden"><div class="card"><h3>PROMET</h3>
+<div class="form-row"><label>Blagajne</label><select id="revRegister" style="min-width:250px"><option value="">Sve blagajne</option></select>
+<label>Od</label><input type="date" id="revFrom"><label>Do</label><input type="date" id="revTo">
+<button class="btn btn-primary" onclick="loadRevenue()">&#128269; Generiraj</button></div>
+<table><thead><tr><th>Naziv</th><th>OIB</th><th>PP</th><th>Godina</th><th>Iznos</th></tr></thead><tbody id="revTable"></tbody></table></div></div>
+<div id="page-orders" class="hidden"><div class="card"><h3>RACUNI</h3>
+<div class="form-row"><label>Blagajne</label><select id="orderRegister" style="min-width:250px"><option value="">Sve blagajne</option></select>
+<label>Od</label><input type="date" id="orderFrom"><label>Do</label><input type="date" id="orderTo">
+<button class="btn btn-primary" onclick="loadOrders()">&#128269; Trazi</button></div>
+<div style="max-height:500px;overflow:auto"><table><thead><tr><th>OIB</th><th>Firma</th><th>Racun br.</th><th>Iznos</th><th>Napojnica</th><th>Placanje</th><th>Datum racuna</th><th>Datum fisk.</th><th>Operater</th><th>JIR</th><th></th></tr></thead>
+<tbody id="orderTable"></tbody></table></div></div></div>
+</div></div></div>
+<div id="orderModal" class="order-modal-overlay hidden" onclick="if(event.target===this)closeOrderModal()"><div class="order-modal"><div class="modal-close-btn"><button onclick="closeOrderModal()">&#10005; Zatvori</button></div><div id="orderModalContent"></div></div></div>
+<script>
+var TOKEN=localStorage.getItem('pc_token')||'';var USER=JSON.parse(localStorage.getItem('pc_user')||'null');var allCompanies=[];
+function api(url,opts){opts=opts||{};opts.headers=opts.headers||{};if(TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
+if(opts.body&&typeof opts.body==='object'){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(opts.body);}
+return fetch(url,opts).then(function(r){if(r.status===401&&url.indexOf('/auth/')<0){doLogout();throw new Error('Neautorizirano');}return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return{};}});});}
+function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleString('hr-HR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(e){return d;}}
+function fmtDateShort(d){if(!d)return'';try{return new Date(d).toLocaleDateString('hr-HR');}catch(e){return d;}}
+function fmtMoney(n){return Number(n||0).toLocaleString('hr-HR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function doLogin(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value;
+if(!u||!p){document.getElementById('loginError').textContent='Upisi korisnicko ime i lozinku';return;}
+fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+.then(function(r){return r.text();}).then(function(text){var data;try{data=JSON.parse(text);}catch(e){document.getElementById('loginError').textContent='Greska servera';return;}
+if(!data.success){document.getElementById('loginError').textContent=data.message||'Pogresni podaci';return;}
+TOKEN=data.token;USER={username:data.username,displayName:data.displayName,isAdmin:data.isAdmin};
+localStorage.setItem('pc_token',TOKEN);localStorage.setItem('pc_user',JSON.stringify(USER));showApp();}).catch(function(e){document.getElementById('loginError').textContent='Greska: '+e.message;});}
+function doLogout(){if(TOKEN)fetch('/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN}}).catch(function(){});
+TOKEN='';USER=null;localStorage.removeItem('pc_token');localStorage.removeItem('pc_user');
+document.getElementById('loginPage').classList.remove('hidden');document.getElementById('mainApp').classList.add('hidden');
+document.getElementById('loginUser').value='';document.getElementById('loginPass').value='';document.getElementById('loginError').textContent='';}
+function checkAuth(){if(!TOKEN)return Promise.resolve(false);return api('/api/auth/me').then(function(d){USER={username:d.username,displayName:d.displayName,isAdmin:d.isAdmin};localStorage.setItem('pc_user',JSON.stringify(USER));return true;}).catch(function(){return false;});}
+function showApp(){document.getElementById('loginPage').classList.add('hidden');document.getElementById('mainApp').classList.remove('hidden');
+document.getElementById('userInfo').textContent=(USER.displayName||USER.username).toUpperCase();
+document.getElementById('navUsers').style.display=USER.isAdmin?'':'none';document.getElementById('navCompanies').style.display=USER.isAdmin?'':'none';
+loadDashboard();loadRegisterDropdowns();}
+function showPage(name,el){document.querySelectorAll('[id^="page-"]').forEach(function(p){p.classList.add('hidden');});
+document.querySelectorAll('.sidebar a').forEach(function(a){a.classList.remove('active');});
+document.getElementById('page-'+name).classList.remove('hidden');if(el)el.classList.add('active');
+if(name==='dashboard')loadDashboard();if(name==='companies'){closeCompanyDetail();loadCompaniesOverview();}
+if(name==='users')loadUsers();if(name==='revenue')loadRevenue();if(name==='orders')loadOrders();}
+function loadDashboard(){api('/api/dashboard/stats').then(function(s){document.getElementById('statsCards').innerHTML=
+'<div class="stat-card blue"><div class="number">'+s.activeRegisters+'</div><div class="label">Aktivna prodajna mjesta</div></div>'+
+'<div class="stat-card green"><div class="number">'+s.totalOrders+'</div><div class="label">Racuni u '+s.year+'.</div></div>'+
+'<div class="stat-card orange"><div class="number">'+s.nonFiscalized+'</div><div class="label">Ne fiskalizirani u '+s.year+'.</div></div>'+
+'<div class="stat-card red"><div class="number">'+s.expiringRegistrations+'</div><div class="label">Istek registracija (30 dana)</div></div>';
+if(USER.isAdmin){loadNonFiscalized();loadExpiringRegistrations();}}).catch(function(e){console.error(e);});}
+function loadNonFiscalized(){api('/api/admin/orders/nonfiscalized?period='+document.getElementById('nfPeriod').value).then(function(data){
+document.getElementById('nfTable').innerHTML=data.length?data.map(function(d){return'<tr><td>'+d.Name+'</td><td>'+d.OIB+'</td><td>'+d.SpaceCode+'</td><td>'+d.NonFiscalizedCount+'</td></tr>';}).join(''):'<tr><td colspan="4" style="color:#999">Nema</td></tr>';}).catch(function(){});}
+function loadExpiringRegistrations(){api('/api/admin/registrations/expiring').then(function(data){document.getElementById('regTable').innerHTML=data.length?data.map(function(d){var c=d.DaysLeft<0?'#e74c3c':d.DaysLeft<30?'#f39c12':'#27ae60';return'<tr><td>'+d.Name+'</td><td>'+d.OIB+'</td><td>'+d.SpaceCode+'</td><td>'+fmtDateShort(d.RegistrationDate)+'</td><td style="color:'+c+';font-weight:bold">'+d.DaysLeft+'</td></tr>';}).join(''):'<tr><td colspan="5" style="color:#999">Nema</td></tr>';}).catch(function(){});}
+function loadRegisterDropdowns(){api('/api/dashboard').then(function(data){var opts=data.map(function(d){return'<option value="'+d.RegisterId+'">'+d.CompanyName+', '+d.SpaceCode+'-'+d.RegisterCode+'</option>';}).join('');['orderRegister','revRegister'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML='<option value="">Sve blagajne</option>'+opts;});}).catch(function(){});}
+</script>
+<script>
+function showAddCompany(){document.getElementById('addCompanyForm').classList.remove('hidden');}
+function hideAddCompany(){document.getElementById('addCompanyForm').classList.add('hidden');}
+function addCompany(){var o=document.getElementById('newOIB').value.trim(),n=document.getElementById('newCompanyName').value.trim(),a=document.getElementById('newCompanyAddr').value.trim(),c=document.getElementById('newCompanyCity').value.trim();if(!o||!n)return alert('Upisi OIB i naziv');api('/api/admin/companies',{method:'POST',body:{oib:o,name:n,address:a,city:c}}).then(function(){hideAddCompany();document.getElementById('newOIB').value='';document.getElementById('newCompanyName').value='';document.getElementById('newCompanyAddr').value='';document.getElementById('newCompanyCity').value='';loadCompaniesOverview();});}
+function loadCompaniesOverview(){api('/api/admin/companies/overview').then(function(data){var f=document.getElementById('compFilter').value.toLowerCase();var fl=f?data.filter(function(d){return d.Name.toLowerCase().indexOf(f)>=0||(d.OIB||'').indexOf(f)>=0;}):data;document.getElementById('compTable').innerHTML=fl.length?fl.map(function(d){return'<tr><td>'+d.Name+'</td><td>'+d.SpaceCode+' - '+d.RegisterCode+'</td><td>'+fmtDate(d.LastOrderDate)+'</td><td>'+(d.NonFiscalized||0)+'</td><td>'+fmtDateShort(d.RegistrationDate)+'</td><td><button class="btn btn-primary btn-sm" onclick="openCompanyDetail('+d.Id+')">&#127968;</button></td></tr>';}).join(''):'<tr><td colspan="6" style="color:#999">Nema podataka</td></tr>';}).catch(function(e){console.error(e);});}
+function openCompanyDetail(companyId){api('/api/admin/companies/'+companyId+'/detail').then(function(data){if(!data||!data.Id)return;document.getElementById('companyListCard').classList.add('hidden');var det=document.getElementById('companyDetail');det.classList.remove('hidden');var sr='';if(data.Spaces&&data.Spaces.length){for(var i=0;i<data.Spaces.length;i++){var s=data.Spaces[i];sr+='<div class="detail-row"><div class="dlabel">Poslovni prostor</div><div class="dvalue">'+s.Code+'</div></div>';var regs=s.Registers||[];for(var j=0;j<regs.length;j++){var r=regs[j];sr+='<div class="detail-row"><div class="dlabel">Naplatni uredaj</div><div class="dvalue">'+r.Code+'</div></div>';sr+='<div class="detail-row"><div class="dlabel">Registriran do</div><div class="dvalue">'+(fmtDateShort(r.RegistrationDate)||'-')+'</div></div>';sr+='<div class="detail-row"><div class="dlabel">Kljuc registracije</div><div class="dvalue" style="font-family:monospace">'+(r.LicenseKey||'-')+'</div></div>';sr+='<div class="detail-row"><div class="dlabel">Status</div><div class="dvalue">'+(r.IsActive?'<span class="badge badge-success">AKTIVNA</span>':'<span class="badge badge-danger">UGASENA</span>')+'</div></div>';sr+='<div style="border-bottom:2px solid #eee;margin:8px 0"></div>';}}}
+var td=new Date().toISOString().split('T')[0],ma=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+det.innerHTML='<div class="card"><div class="detail-header"><h2>PODUZECE - '+data.Name.toUpperCase()+' <a class="back-link" onclick="closeCompanyDetail()">&#8617; NAZAD NA POPIS</a></h2></div><div class="tabs"><div class="tab active" onclick="showCompanyTab(\'osnovno\',this)">Osnovno</div><div class="tab" onclick="showCompanyTab(\'racuni\',this)">Racuni</div></div><div id="compTab-osnovno"><div class="detail-row"><div class="dlabel">Naziv</div><div class="dvalue">'+data.Name+'</div></div><div class="detail-row"><div class="dlabel">OIB</div><div class="dvalue">'+data.OIB+'</div></div><div class="detail-row"><div class="dlabel">Adresa</div><div class="dvalue">'+(data.Address||'-')+'</div></div><div class="detail-row"><div class="dlabel">Postanski broj / Grad</div><div class="dvalue">'+(data.PostalCode||'')+' '+(data.City||'-')+'</div></div><div class="detail-row"><div class="dlabel">IBAN</div><div class="dvalue" style="font-family:monospace">'+(data.IBAN||'-')+'</div></div><div class="detail-row"><div class="dlabel">Porezni model</div><div class="dvalue">'+(data.TaxModel||'R1')+'</div></div><div style="border-bottom:2px solid #3498db;margin:12px 0"></div>'+sr+'</div><div id="compTab-racuni" class="hidden"><div class="form-row"><label>Od</label><input type="date" id="cdFrom" value="'+ma+'"><label>Do</label><input type="date" id="cdTo" value="'+td+'"><label><input type="checkbox" id="cdNonFisc"> Nefiskalizirani</label></div><div class="form-row"><label>Br.racuna</label><input type="number" id="cdReceiptNum" style="width:100px"><label>ZKI</label><input type="text" id="cdZki" style="width:150px"><label>JIR</label><input type="text" id="cdJir" style="width:150px"><label>Kupac</label><input type="text" id="cdCustomer" style="width:150px"><button class="btn btn-primary" onclick="searchCompanyOrders('+companyId+')">&#128269; Trazi</button></div><div style="max-height:400px;overflow:auto"><table><thead><tr><th>Racun br.</th><th>Iznos</th><th>Popust</th><th>Napojnica</th><th>Placanje</th><th>Datum racuna</th><th>Datum fisk.</th><th>Operater</th><th>Kupac</th><th>JIR</th><th></th></tr></thead><tbody id="cdOrderTable"></tbody></table></div></div></div>';searchCompanyOrders(companyId);}).catch(function(e){console.error(e);});}
+function showCompanyTab(n,el){document.querySelectorAll('[id^="compTab-"]').forEach(function(t){t.classList.add('hidden');});document.querySelectorAll('.tabs .tab').forEach(function(t){t.classList.remove('active');});document.getElementById('compTab-'+n).classList.remove('hidden');if(el)el.classList.add('active');}
+function closeCompanyDetail(){document.getElementById('companyDetail').classList.add('hidden');document.getElementById('companyDetail').innerHTML='';document.getElementById('companyListCard').classList.remove('hidden');}
+function searchCompanyOrders(cid){var f=document.getElementById('cdFrom').value,t=document.getElementById('cdTo').value,rn=document.getElementById('cdReceiptNum').value,zk=document.getElementById('cdZki').value,jr=document.getElementById('cdJir').value,cu=document.getElementById('cdCustomer').value,nf=document.getElementById('cdNonFisc').checked;var url='/api/admin/companies/'+cid+'/orders?';if(f)url+='from='+f+'&';if(t)url+='to='+t+'&';if(rn)url+='receiptNumber='+rn+'&';if(zk)url+='zki='+encodeURIComponent(zk)+'&';if(jr)url+='jir='+encodeURIComponent(jr)+'&';if(cu)url+='customer='+encodeURIComponent(cu)+'&';if(nf)url+='nonFiscalized=true&';api(url).then(function(data){document.getElementById('cdOrderTable').innerHTML=data.length?data.map(function(o){var rnum=(o.ReceiptNumber||o.LocalOrderId)+'/'+(o.SpaceCode||'1')+'/'+(o.RegisterCode||'1');return'<tr><td>'+rnum+'</td><td style="font-weight:bold;text-align:right">'+fmtMoney(o.Total)+'</td><td style="text-align:right">0,00</td><td>'+fmtMoney(o.TipAmount)+'</td><td>'+(o.PaymentMethod||'')+'</td><td>'+fmtDate(o.CompletedAt)+'</td><td>'+fmtDate(o.FiscalizedAt)+'</td><td>'+(o.UserName||'')+'</td><td>'+(o.CustomerName||'')+'</td><td style="font-size:11px;font-family:monospace">'+(o.JIR||'')+'</td><td><button class="btn btn-primary btn-sm" onclick="showOrderDetail('+o.Id+')">&#128196;</button></td></tr>';}).join(''):'<tr><td colspan="11" style="color:#999">Nema racuna</td></tr>';}).catch(function(e){console.error(e);});}
+</script>
+<script>
+function showOrderDetail(orderId){api('/api/admin/orders/'+orderId).then(function(o){if(!o||!o.Id)return;document.getElementById('orderModal').classList.remove('hidden');var items=[];try{items=JSON.parse(o.ItemsJson||'[]');}catch(e){}
+var rnum=(o.ReceiptNumber||o.LocalOrderId)+'/'+(o.SpaceCode||'1')+'/'+(o.RegisterCode||'1');
+var taxModel=(o.CompanyTaxModel||'R1');
+var h='<div class="receipt">';
+h+='<div class="receipt-header">';
+h+='<div class="company-side">';
+h+='<div class="company-name">'+(o.CompanyName||'')+'</div>';
+h+='<div class="company-info">';
+var addrParts=[];if(o.CompanyAddress)addrParts.push(o.CompanyAddress);var pcCity=((o.CompanyPostalCode||'')+' '+(o.CompanyCity||'')).trim();if(pcCity)addrParts.push(pcCity);if(addrParts.length)h+=addrParts.join(', ')+'<br>';
+h+='OIB: '+(o.OIB||'')+'<br>';
+h+='Datum: '+fmtDate(o.CompletedAt)+'<br>';
+h+='Izradio: '+(o.UserName||'-')+'<br>';
+h+='Placanje: '+(o.PaymentMethod||'-')+'<br>';
+if(o.CompanyIBAN)h+='IBAN: '+o.CompanyIBAN+'<br>';
+h+='</div></div>';
+if(o.CustomerName||o.CustomerOib){
+h+='<div class="customer-box"><strong>Kupac:</strong><br>'+(o.CustomerName||'');
+if(o.CustomerAddress)h+='<br>'+o.CustomerAddress;
+if(o.CustomerCity)h+='<br>'+o.CustomerCity;
+if(o.CustomerOib)h+='<br>OIB: '+o.CustomerOib;
+h+='</div>';}
+h+='</div>';
+h+='<div class="receipt-title"><span>Racun broj: '+rnum+'</span><span>'+taxModel+'</span></div>';
+h+='<table class="items-table"><thead><tr><th style="text-align:left;width:35%">Naziv</th><th style="text-align:right">Kolicina</th><th style="text-align:right">Cijena</th><th style="text-align:right">Popust</th><th style="text-align:right">Cijena s pop.</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
+var taxGroups={};
+for(var i=0;i<items.length;i++){var it=items[i];var up=Number(it.UnitPrice||0);var qty=Number(it.Qty||0);var lt=Number(it.LineTotal||0);var disc=Number(it.Discount||0);var priceWithDisc=up;
+h+='<tr><td>'+(it.Name||'')+'</td><td style="text-align:right">'+qty.toFixed(0)+'</td><td style="text-align:right">'+fmtMoney(up)+'</td><td style="text-align:right">'+fmtMoney(disc)+'</td><td style="text-align:right">'+fmtMoney(priceWithDisc)+'</td><td style="text-align:right">'+fmtMoney(lt)+'</td></tr>';
+var vr=Number(it.VatRate||0);var va=Number(it.VatAmount||0);var base=lt-va;
+var key='PDV '+vr.toFixed(1);if(!taxGroups[key])taxGroups[key]={rate:vr,base:0,tax:0};taxGroups[key].base+=base;taxGroups[key].tax+=va;}
+h+='</tbody></table>';
+h+='<div class="tax-section"><table class="tax-table"><thead><tr><th style="text-align:left">Porez</th><th style="text-align:right">Osnovica</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
+var totalTax=0;
+for(var k in taxGroups){var tg=taxGroups[k];h+='<tr><td>'+k+'</td><td style="text-align:right">'+fmtMoney(tg.base)+'</td><td style="text-align:right">'+fmtMoney(tg.tax)+'</td></tr>';totalTax+=tg.tax;}
+h+='<tr><td colspan="2" style="text-align:right;font-weight:bold">Ukupno porez:</td><td style="text-align:right;font-weight:bold">'+fmtMoney(totalTax)+'</td></tr>';
+h+='</tbody></table></div>';
+h+='<div class="total-line">UKUPNO (EUR): '+fmtMoney(o.Total)+'</div>';
+if(Number(o.TipAmount||0)>0)h+='<div style="text-align:right;font-size:14px;margin-bottom:10px">Napojnica: '+fmtMoney(o.TipAmount)+' EUR</div>';
+h+='<div class="footer">';
+h+='Nacin placanja: '+(o.PaymentMethod||'-')+'<br>';
+if(o.ZKI)h+='<span class="zki-jir">ZKI: '+o.ZKI+'</span><br>';
+if(o.JIR)h+='<span class="zki-jir">JIR: '+o.JIR+'</span><br>';
+h+='</div></div>';
+document.getElementById('orderModalContent').innerHTML=h;}).catch(function(e){console.error(e);});}
+function closeOrderModal(){document.getElementById('orderModal').classList.add('hidden');document.getElementById('orderModalContent').innerHTML='';}
+</script>
+<script>
+function showAddUser(){document.getElementById('addUserForm').classList.remove('hidden');}
+function hideAddUser(){document.getElementById('addUserForm').classList.add('hidden');}
+function addUser(){var u=document.getElementById('newUsername').value.trim();var p=document.getElementById('newPassword').value;
+var dn=document.getElementById('newDisplayName').value.trim();var ia=document.getElementById('newIsAdmin').checked;
+if(!u||!p)return alert('Upisi korisnicko ime i lozinku');
+api('/api/admin/users',{method:'POST',body:{username:u,password:p,displayName:dn||u,isAdmin:ia}}).then(function(){
+hideAddUser();document.getElementById('newUsername').value='';document.getElementById('newPassword').value='';
+document.getElementById('newDisplayName').value='';document.getElementById('newIsAdmin').checked=false;loadUsers();});}
+function loadUsers(){api('/api/admin/users').then(function(users){
+var filter=document.getElementById('userFilter').value.toLowerCase();
+var filtered=filter?users.filter(function(u){return u.Username.toLowerCase().indexOf(filter)>=0||(u.DisplayName||'').toLowerCase().indexOf(filter)>=0;}):users;
+var promises=filtered.map(function(u){return api('/api/admin/users/'+u.Id+'/companies').then(function(c){u._companies=c;});});
+Promise.all(promises).then(function(){var html='';filtered.forEach(function(u){
+var cn=u._companies.map(function(c){return c.Name;}).join(', ')||'-';
+html+='<tr><td>'+(u.DisplayName||'')+'</td><td>'+u.Username+'</td><td>'+cn+' <button class="btn btn-primary btn-sm" onclick="assignCompany('+u.Id+',\''+u.Username+'\')">+</button></td><td><button class="btn btn-warning btn-sm" onclick="resetPassword('+u.Id+')">&#128273;</button>'+(u.Username!=='admin'?'<button class="btn btn-danger btn-sm" onclick="deleteUser('+u.Id+')">&#128465;</button>':'')+'</td></tr>';});
+document.getElementById('userTable').innerHTML=html||'<tr><td colspan="4" style="color:#999">Nema korisnika</td></tr>';});}).catch(function(e){console.error(e);});}
+function assignCompany(uid,uname){if(!allCompanies.length){api('/api/admin/companies').then(function(c){allCompanies=c;assignCompany(uid,uname);});return;}
+var list=allCompanies.map(function(c){return c.Id+': '+c.Name+' ('+c.OIB+')';}).join('\n');
+var id=prompt('Upisi ID firme za dodijeliti korisniku '+uname+':\n\n'+list);if(!id)return;
+api('/api/admin/users/'+uid+'/companies/'+id,{method:'POST'}).then(function(){loadUsers();});}
+function resetPassword(id){var pw=prompt('Nova lozinka:');if(!pw)return;
+api('/api/admin/users/'+id,{method:'PUT',body:{password:pw,isAdmin:false}}).then(function(){alert('Lozinka promijenjena');});}
+function deleteUser(id){if(!confirm('Obrisati korisnika?'))return;api('/api/admin/users/'+id,{method:'DELETE'}).then(function(){loadUsers();});}
+function loadRevenue(){var rid=document.getElementById('revRegister').value;
+var from=document.getElementById('revFrom').value;var to=document.getElementById('revTo').value;
+var url='/api/report/revenue?';if(rid)url+='registerId='+rid+'&';if(from)url+='from='+from+'&';if(to)url+='to='+to+'&';
+api(url).then(function(data){document.getElementById('revTable').innerHTML=data.length?data.map(function(d){
+return'<tr><td>'+d.CompanyName+'</td><td>'+d.OIB+'</td><td>'+d.SpaceCode+'</td><td>'+(d.Year||'')+'</td><td style="font-weight:bold;text-align:right">'+fmtMoney(d.TotalRevenue)+'</td></tr>';
+}).join(''):'<tr><td colspan="5" style="color:#999">Nema podataka</td></tr>';}).catch(function(e){console.error(e);});}
+function loadOrders(){var rid=document.getElementById('orderRegister').value;
+var from=document.getElementById('orderFrom').value;var to=document.getElementById('orderTo').value;
+var url='/api/orders?';if(rid)url+='registerId='+rid+'&';if(from)url+='from='+from+'&';if(to)url+='to='+to+'&';
+api(url).then(function(data){document.getElementById('orderTable').innerHTML=data.length?data.map(function(o){
+var rnum=(o.ReceiptNumber||o.LocalOrderId)+'/'+(o.SpaceCode||'1')+'/'+(o.RegisterCode||'1');
+return'<tr><td>'+(o.OIB||'')+'</td><td>'+(o.CompanyName||'')+'</td><td>'+rnum+'</td><td style="font-weight:bold;text-align:right">'+fmtMoney(o.Total)+'</td><td>'+fmtMoney(o.TipAmount)+'</td><td>'+(o.PaymentMethod||'')+'</td><td>'+fmtDate(o.CompletedAt)+'</td><td>'+fmtDate(o.FiscalizedAt)+'</td><td>'+(o.UserName||'')+'</td><td style="font-size:11px;font-family:monospace">'+(o.JIR||'')+'</td><td><button class="btn btn-primary btn-sm" onclick="showOrderDetail('+o.Id+')">&#128196;</button></td></tr>';
+}).join(''):'<tr><td colspan="11" style="color:#999">Nema racuna</td></tr>';}).catch(function(e){console.error(e);});}
+document.getElementById('dashFrom').value=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+document.getElementById('compFromDate').value=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+document.getElementById('orderFrom').value=new Date().toISOString().split('T')[0];
+document.getElementById('orderTo').value=new Date().toISOString().split('T')[0];
+document.getElementById('revFrom').value=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+document.getElementById('revTo').value=new Date().toISOString().split('T')[0];
+checkAuth().then(function(ok){if(ok)showApp();});
+</script>
+</body>
+</html>

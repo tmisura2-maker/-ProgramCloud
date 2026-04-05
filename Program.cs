@@ -337,6 +337,43 @@ app.MapPost("/api/sync/order", async (HttpRequest req) =>
     return Results.Json(new { success = true, inserted = 1, message = "Račun primljen" });
 });
 
+// Ažuriraj fiskalizacijske podatke (JIR/ZKI) za postojeći račun
+app.MapPut("/api/sync/order/fiscalize", async (HttpRequest req) =>
+{
+    var body = await new StreamReader(req.Body).ReadToEndAsync();
+    var data = JsonConvert.DeserializeObject<FiscalizeUpdateRequest>(body);
+    if (data == null || string.IsNullOrEmpty(data.CompanyOIB))
+        return Results.BadRequest("Nedostaju podaci");
+
+    using var conn = new NpgsqlConnection(connStr);
+    conn.Open();
+
+    // Pronađi blagajnu
+    var company = conn.QueryFirstOrDefault<dynamic>("SELECT \"Id\" FROM \"Companies\" WHERE \"OIB\" = @oib", new { oib = data.CompanyOIB });
+    if (company == null) return Results.NotFound("Firma nije pronađena");
+
+    var sc = string.IsNullOrEmpty(data.BusinessSpaceCode) ? "1" : data.BusinessSpaceCode;
+    var rc = string.IsNullOrEmpty(data.CashRegisterCode) ? "1" : data.CashRegisterCode;
+
+    var register = conn.QueryFirstOrDefault<dynamic>(@"
+        SELECT cr.""Id"" FROM ""CashRegisters"" cr
+        JOIN ""BusinessSpaces"" bs ON cr.""BusinessSpaceId"" = bs.""Id""
+        WHERE bs.""CompanyId"" = @cid AND bs.""Code"" = @sc AND cr.""Code"" = @rc",
+        new { cid = (int)company.Id, sc, rc });
+
+    if (register == null) return Results.NotFound("Blagajna nije pronađena");
+
+    var updated = conn.Execute(@"
+        UPDATE ""Orders"" SET ""IsFiscalized"" = true, ""JIR"" = @jir, ""ZKI"" = @zki, ""FiscalizedAt"" = @fiscAt,
+            ""ReceiptNumber"" = COALESCE(NULLIF(@receiptNum, 0), ""ReceiptNumber"")
+        WHERE ""CashRegisterId"" = @rid AND ""LocalOrderId"" = @localId",
+        new { jir = data.JIR, zki = data.ZKI, fiscAt = data.FiscalizedAt,
+            receiptNum = data.ReceiptNumber, rid = (int)register.Id, localId = data.LocalOrderId });
+
+    Console.WriteLine($"[SYNC] Fiskalizacija račun #{data.LocalOrderId}: JIR={data.JIR}, updated={updated}");
+    return Results.Json(new { success = true, updated, message = "Fiskalizacija ažurirana" });
+});
+
 // ==================== COMPANY DETAIL ====================
 
 app.MapGet("/api/admin/companies/{companyId}/detail", (int companyId, HttpContext ctx) =>
@@ -688,3 +725,5 @@ record SyncOrderRequest(string CompanyOIB, string? CompanyName, string? CompanyA
     string? CompanyPostalCode, string? CompanyIBAN, string? CompanyTaxModel,
     string? BusinessSpaceCode, string? CashRegisterCode, SyncOrderData? Order);
 record VersionData(string Version, string DownloadUrl, string Changelog);
+record FiscalizeUpdateRequest(string CompanyOIB, string? BusinessSpaceCode, string? CashRegisterCode,
+    int LocalOrderId, int ReceiptNumber, string? JIR, string? ZKI, string? FiscalizedAt);

@@ -406,7 +406,7 @@ app.MapGet("/api/admin/companies/{companyId}/detail", (int companyId, HttpContex
     return Results.Json(result);
 });
 
-app.MapGet("/api/admin/companies/{companyId}/orders", (int companyId, HttpContext ctx, string? from, string? to, int? receiptNumber, string? zki, string? jir, string? customer, bool? nonFiscalized) =>
+app.MapGet("/api/admin/companies/{companyId}/orders", (int companyId, HttpContext ctx, string? from, string? to, int? receiptNumber, string? zki, string? jir, string? customer, bool? nonFiscalized, int? registerId) =>
 {
     if (!IsAdmin(ctx)) return Results.Unauthorized();
     using var conn = new NpgsqlConnection(connStr);
@@ -418,6 +418,7 @@ app.MapGet("/api/admin/companies/{companyId}/orders", (int companyId, HttpContex
         WHERE bs.""CompanyId"" = @cid";
     var p = new DynamicParameters();
     p.Add("cid", companyId);
+    if (registerId.HasValue) { sql += @" AND o.""CashRegisterId"" = @rid"; p.Add("rid", registerId.Value); }
     if (!string.IsNullOrEmpty(from)) { sql += @" AND o.""CompletedAt"" >= @from"; p.Add("from", from); }
     if (!string.IsNullOrEmpty(to)) { sql += @" AND o.""CompletedAt"" <= @to"; p.Add("to", to + "T23:59:59"); }
     if (receiptNumber.HasValue) { sql += @" AND o.""ReceiptNumber"" = @rn"; p.Add("rn", receiptNumber.Value); }

@@ -224,8 +224,8 @@ h+='</div>';
 h+='<div class="receipt-title"><span>Racun broj: '+rnum+'</span><span>'+taxModel+'</span></div>';
 h+='<table class="items-table"><thead><tr><th style="text-align:left;width:35%">Naziv</th><th style="text-align:right">Kolicina</th><th style="text-align:right">Cijena</th><th style="text-align:right">Popust</th><th style="text-align:right">Cijena s pop.</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
 var taxGroups={};
-for(var i=0;i<items.length;i++){var it=items[i];var up=Number(it.UnitPrice||0);var qty=Number(it.Qty||0);var lt=Number(it.LineTotal||0);var disc=Number(it.Discount||0);var priceWithDisc=up;
-h+='<tr><td>'+(it.Name||'')+'</td><td style="text-align:right">'+qty.toFixed(0)+'</td><td style="text-align:right">'+fmtMoney(up)+'</td><td style="text-align:right">'+fmtMoney(disc)+'</td><td style="text-align:right">'+fmtMoney(priceWithDisc)+'</td><td style="text-align:right">'+fmtMoney(lt)+'</td></tr>';
+for(var i=0;i<items.length;i++){var it=items[i];var up=Number(it.UnitPrice||0);var qty=Number(it.Qty||0);var lt=Number(it.LineTotal||0);var disc=Number(it.Discount||0);var origPrice=Number(it.OriginalPrice||0);var displayPrice=origPrice>0?origPrice:up;var priceWithDisc=up;
+h+='<tr><td>'+(it.Name||'')+'</td><td style="text-align:right">'+qty.toFixed(0)+'</td><td style="text-align:right">'+fmtMoney(displayPrice)+'</td><td style="text-align:right">'+fmtMoney(disc)+'</td><td style="text-align:right">'+fmtMoney(priceWithDisc)+'</td><td style="text-align:right">'+fmtMoney(lt)+'</td></tr>';
 var vr=Number(it.VatRate||0);var va=Number(it.VatAmount||0);var base=lt-va;
 var key='PDV '+vr.toFixed(1);if(!taxGroups[key])taxGroups[key]={rate:vr,base:0,tax:0};taxGroups[key].base+=base;taxGroups[key].tax+=va;}
 h+='</tbody></table>';

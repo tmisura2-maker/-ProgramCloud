@@ -720,7 +720,7 @@ record SyncOrderData(int LocalOrderId, int ReceiptNumber, decimal Total, string?
     string? UserName, string? CustomerName, string? CustomerOib, string? CustomerAddress, string? CustomerCity,
     string? Status, string? CreatedAt, string? CompletedAt,
     decimal TipAmount, int IsFiscalized, string? JIR, string? ZKI, string? FiscalizedAt, List<SyncOrderItem>? Items);
-record SyncOrderItem(string Name, decimal Qty, decimal UnitPrice, decimal LineTotal, decimal Discount, decimal VatRate, decimal VatAmount, decimal PnpRate, decimal PnpAmount);
+record SyncOrderItem(string Name, decimal Qty, decimal UnitPrice, decimal LineTotal, decimal Discount, decimal VatRate, decimal VatAmount, decimal PnpRate, decimal PnpAmount, decimal DiscountPercent = 0, decimal OriginalPrice = 0);
 record SyncOrderRequest(string CompanyOIB, string? CompanyName, string? CompanyAddress, string? CompanyCity,
     string? CompanyPostalCode, string? CompanyIBAN, string? CompanyTaxModel,
     string? BusinessSpaceCode, string? CashRegisterCode, SyncOrderData? Order);

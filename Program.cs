@@ -292,6 +292,22 @@ app.MapGet("/api/admin/spaces/{spaceId}/registers", (int spaceId, HttpContext ct
     return Results.Json(list);
 });
 
+// ==================== BRISANJE BLAGAJNE ====================
+
+app.MapDelete("/api/admin/registers/{registerId}", (int registerId, HttpContext ctx) =>
+{
+    if (!IsAdmin(ctx)) return Results.Unauthorized();
+    using var conn = new NpgsqlConnection(connStr);
+    conn.Open();
+    
+    var orderCount = conn.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM \"Orders\" WHERE \"CashRegisterId\" = @rid", new { rid = registerId });
+    conn.Execute("DELETE FROM \"Orders\" WHERE \"CashRegisterId\" = @rid", new { rid = registerId });
+    conn.Execute("DELETE FROM \"CashRegisters\" WHERE \"Id\" = @rid", new { rid = registerId });
+    
+    Console.WriteLine($"[ADMIN] Obrisana blagajna {registerId} sa {orderCount} racuna");
+    return Results.Json(new { success = true, message = $"Obrisana blagajna sa {orderCount} racuna" });
+});
+
 // ==================== BLAGAJNA SYNC ====================
 
 app.MapPost("/api/sync/order", async (HttpRequest req) =>

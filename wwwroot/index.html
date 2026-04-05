@@ -222,15 +222,13 @@ if(o.CustomerOib)h+='<br>OIB: '+o.CustomerOib;
 h+='</div>';}
 h+='</div>';
 h+='<div class="receipt-title"><span>Racun broj: '+rnum+'</span><span>'+taxModel+'</span></div>';
-h+='<table class="items-table"><thead><tr><th style="text-align:left;width:40%">Naziv</th><th style="text-align:right">Kolicina</th><th style="text-align:right">Cijena</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
+h+='<table class="items-table"><thead><tr><th style="text-align:left;width:30%">Naziv</th><th style="text-align:right">Kolicina</th><th style="text-align:right">Cijena</th><th style="text-align:right">Popust</th><th style="text-align:right">Cijena s pop.</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
 var taxGroups={};var totalOriginal=0;var totalDiscounted=0;var discPct=0;
-for(var i=0;i<items.length;i++){var it=items[i];var up=Number(it.UnitPrice||0);var qty=Number(it.Qty||0);var lt=Number(it.LineTotal||0);var origPrice=Number(it.OriginalPrice||0);var dp=Number(it.DiscountPercent||0);var displayPrice=qty>0?lt/qty:up;
-h+='<tr><td>'+(it.Name||'')+'</td><td style="text-align:right">'+qty.toFixed(0)+'</td><td style="text-align:right">'+fmtMoney(displayPrice)+'</td><td style="text-align:right">'+fmtMoney(lt)+'</td></tr>';
-if(dp>0&&origPrice>0){totalOriginal+=origPrice*qty;totalDiscounted+=lt;discPct=dp;}
+for(var i=0;i<items.length;i++){var it=items[i];var up=Number(it.UnitPrice||0);var qty=Number(it.Qty||0);var lt=Number(it.LineTotal||0);var origPrice=Number(it.OriginalPrice||0);var dp=Number(it.DiscountPercent||0);var pricePerUnit=qty>0?lt/qty:up;var displayOrigPrice=origPrice>0?origPrice:pricePerUnit;var discText=dp>0?(dp.toFixed(0)+'%'):'';var priceWithDisc=dp>0?pricePerUnit:displayOrigPrice;
+h+='<tr><td>'+(it.Name||'')+'</td><td style="text-align:right">'+qty.toFixed(0)+'</td><td style="text-align:right">'+fmtMoney(displayOrigPrice)+'</td><td style="text-align:right">'+discText+'</td><td style="text-align:right">'+fmtMoney(priceWithDisc)+'</td><td style="text-align:right">'+fmtMoney(lt)+'</td></tr>';
 var vr=Number(it.VatRate||0);var va=Number(it.VatAmount||0);var base=lt-va;
 var key='PDV '+vr.toFixed(1);if(!taxGroups[key])taxGroups[key]={rate:vr,base:0,tax:0};taxGroups[key].base+=base;taxGroups[key].tax+=va;}
 h+='</tbody></table>';
-if(totalOriginal>0&&totalOriginal!=totalDiscounted){var discAmt=totalOriginal-totalDiscounted;h+='<div style="font-size:13px;margin:5px 0"><span>Iznos bez popusta: '+fmtMoney(totalOriginal)+'</span><br><span>Popust ('+discPct.toFixed(0)+'%): -'+fmtMoney(discAmt)+'</span></div>';}
 h+='<div class="tax-section"><table class="tax-table"><thead><tr><th style="text-align:left">Porez</th><th style="text-align:right">Osnovica</th><th style="text-align:right">Iznos</th></tr></thead><tbody>';
 var totalTax=0;
 for(var k in taxGroups){var tg=taxGroups[k];h+='<tr><td>'+k+'</td><td style="text-align:right">'+fmtMoney(tg.base)+'</td><td style="text-align:right">'+fmtMoney(tg.tax)+'</td></tr>';totalTax+=tg.tax;}

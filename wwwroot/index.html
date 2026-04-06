@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProgramCloud - Upravljanje blagajnama</title>
+<title>WEB Pregled - Upravljanje blagajnama</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
@@ -85,12 +85,12 @@ input,select{padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:
 </style>
 </head>
 <body>
-<div id="loginPage" class="login-wrap"><div class="login-box"><h2>&#9729; ProgramCloud</h2>
+<div id="loginPage" class="login-wrap"><div class="login-box"><h2>&#9729; WEB Pregled</h2>
 <input type="text" id="loginUser" placeholder="Korisnicko ime" autofocus>
 <input type="password" id="loginPass" placeholder="Lozinka" onkeydown="if(event.key==='Enter')doLogin()">
 <button onclick="doLogin()">Prijava</button><div class="login-error" id="loginError"></div></div></div>
 <div id="mainApp" class="hidden">
-<div class="topbar"><h1>PROGRAMCLOUD - BACKOFFICE</h1><div class="user-info"><span id="userInfo"></span><button class="btn-logout" onclick="doLogout()">Odjava</button></div></div>
+<div class="topbar"><h1>WEB PREGLED</h1><div class="user-info"><span id="userInfo"></span><button class="btn-logout" onclick="doLogout()">Odjava</button></div></div>
 <div class="layout"><div class="sidebar">
 <a href="#" class="active" onclick="showPage('dashboard',this)">&#127968; Administracija</a>
 <a href="#" onclick="showPage('companies',this)" id="navCompanies">&#128203; Poduzeca, obrti</a>

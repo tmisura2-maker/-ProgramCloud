@@ -81,7 +81,8 @@ input,select{padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:
 .receipt .total-line{text-align:right;font-size:22px;font-weight:bold;margin:10px 0;padding:8px 0;border-top:2px solid #333}
 .receipt .footer{margin-top:15px;font-size:12px;color:#555;line-height:1.8}
 .receipt .footer .zki-jir{font-size:11px;color:#888;font-family:monospace}
-@media(max-width:768px){.sidebar{display:none}.stats{flex-direction:column}.form-row{flex-direction:column}}
+@media(max-width:768px){.sidebar{display:none;position:fixed;top:44px;left:0;bottom:0;z-index:999;width:220px;box-shadow:2px 0 10px rgba(0,0,0,0.3)}.sidebar.open{display:block}.stats{flex-direction:column}.form-row{flex-direction:column}.hamburger{display:block !important}}
+.hamburger{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:5px 10px;margin-right:10px}
 </style>
 </head>
 <body>
@@ -90,7 +91,7 @@ input,select{padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:
 <input type="password" id="loginPass" placeholder="Lozinka" onkeydown="if(event.key==='Enter')doLogin()">
 <button onclick="doLogin()">Prijava</button><div class="login-error" id="loginError"></div></div></div>
 <div id="mainApp" class="hidden">
-<div class="topbar"><h1>WEB PREGLED</h1><div class="user-info"><span id="userInfo"></span><button class="btn-logout" onclick="doLogout()">Odjava</button></div></div>
+<div class="topbar"><button class="hamburger" onclick="toggleMenu()">&#9776;</button><h1>WEB PREGLED</h1><div class="user-info"><span id="userInfo"></span><button class="btn-logout" onclick="doLogout()">Odjava</button></div></div>
 <div class="layout"><div class="sidebar">
 <a href="#" class="active" onclick="showPage('dashboard',this)">&#127968; Administracija</a>
 <a href="#" onclick="showPage('companies',this)" id="navCompanies">&#128203; Poduzeca, obrti</a>
@@ -153,6 +154,7 @@ return fetch(url,opts).then(function(r){if(r.status===401&&url.indexOf('/auth/')
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleString('hr-HR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(e){return d;}}
 function fmtDateShort(d){if(!d)return'';try{return new Date(d).toLocaleDateString('hr-HR');}catch(e){return d;}}
 function fmtMoney(n){return Number(n||0).toLocaleString('hr-HR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function toggleMenu(){document.querySelector('.sidebar').classList.toggle('open');}
 function doLogin(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value;
 if(!u||!p){document.getElementById('loginError').textContent='Upisi korisnicko ime i lozinku';return;}
 fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
@@ -172,6 +174,8 @@ loadDashboard();loadRegisterDropdowns();}
 function showPage(name,el){document.querySelectorAll('[id^="page-"]').forEach(function(p){p.classList.add('hidden');});
 document.querySelectorAll('.sidebar a').forEach(function(a){a.classList.remove('active');});
 document.getElementById('page-'+name).classList.remove('hidden');if(el)el.classList.add('active');
+// Zatvori meni na mobitelu nakon klika
+document.querySelector('.sidebar').classList.remove('open');
 if(name==='dashboard')loadDashboard();if(name==='companies'){closeCompanyDetail();loadCompaniesOverview();}
 if(name==='users')loadUsers();if(name==='revenue')loadRevenue();if(name==='orders')loadOrders();}
 function loadDashboard(){api('/api/dashboard/stats').then(function(s){document.getElementById('statsCards').innerHTML=

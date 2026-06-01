@@ -334,7 +334,22 @@ app.MapPost("/api/sync/order", async (HttpRequest req) =>
         "SELECT COUNT(*) FROM \"Orders\" WHERE \"CashRegisterId\" = @rid AND \"LocalOrderId\" = @localId",
         new { rid = registerId, localId = o.LocalOrderId });
     if (exists > 0)
-        return Results.Json(new { success = true, inserted = 0, message = "Račun već postoji" });
+    {
+        // Ažuriraj postojeći račun (promjena načina plaćanja, storno, itd.)
+        conn.Execute(@"UPDATE ""Orders"" SET ""PaymentMethod"" = @payment, ""Total"" = @total, 
+            ""Status"" = @status, ""CustomerName"" = @customer, ""CustomerOib"" = @customerOib,
+            ""ItemsJson"" = @items, ""TipAmount"" = @tip, ""IsFiscalized"" = @fisc, 
+            ""JIR"" = @jir, ""ZKI"" = @zki, ""FiscalizedAt"" = @fiscAt
+            WHERE ""CashRegisterId"" = @rid AND ""LocalOrderId"" = @localId",
+            new { rid = registerId, localId = o.LocalOrderId,
+                payment = o.PaymentMethod, total = o.Total, status = o.Status,
+                customer = o.CustomerName, customerOib = o.CustomerOib,
+                items = JsonConvert.SerializeObject(o.Items),
+                tip = o.TipAmount, fisc = o.IsFiscalized != 0, jir = o.JIR, zki = o.ZKI,
+                fiscAt = o.FiscalizedAt });
+        Console.WriteLine($"[SYNC] Račun #{o.ReceiptNumber} AŽURIRAN - {o.PaymentMethod} - {o.Total:F2} EUR");
+        return Results.Json(new { success = true, inserted = 0, updated = 1, message = "Račun ažuriran" });
+    }
 
     conn.Execute(@"INSERT INTO ""Orders"" (""CashRegisterId"", ""LocalOrderId"", ""ReceiptNumber"", ""Total"", ""PaymentMethod"",
         ""UserName"", ""CustomerName"", ""CustomerOib"", ""CustomerAddress"", ""CustomerCity"", ""Status"", ""CreatedAt"", ""CompletedAt"", ""ItemsJson"", ""TipAmount"", ""IsFiscalized"", ""JIR"", ""ZKI"", ""FiscalizedAt"")

@@ -3,6 +3,7 @@ using Dapper;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.IO.Compression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -354,8 +355,32 @@ app.MapPost("/api/version/upload", async (HttpRequest req) =>
             await file.CopyToAsync(stream);
         }
 
-        Console.WriteLine($"[UPDATE] ZIP uploadan: {file.Length} bytes");
-        return Results.Json(new { success = true, message = $"ZIP uploadan ({file.Length} bytes)" });
+        // Pročitaj verziju iz ZIP-a (iz .exe fajla)
+        string version = "0.0.0";
+        try
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(filePath);
+            var exeEntry = zip.Entries.FirstOrDefault(e => e.Name == "RestaurantPOS.exe");
+            if (exeEntry != null)
+            {
+                var tempExe = Path.Combine(uploadDir, "temp_version.exe");
+                exeEntry.ExtractToFile(tempExe, true);
+                var vi = System.Diagnostics.FileVersionInfo.GetVersionInfo(tempExe);
+                if (!string.IsNullOrEmpty(vi.FileVersion))
+                    version = new Version(vi.FileVersion).ToString(3);
+                File.Delete(tempExe);
+            }
+        }
+        catch { }
+
+        // Automatski postavi verziju na serveru
+        using var conn = new NpgsqlConnection(connStr);
+        conn.Open();
+        conn.Execute(@"INSERT INTO ""AppVersions"" (""Version"", ""DownloadUrl"", ""Changelog"", ""CreatedAt"") VALUES (@Version, @DownloadUrl, @Changelog, @CreatedAt)",
+            new { Version = version, DownloadUrl = "/api/version/download", Changelog = $"Verzija {version}", CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") });
+
+        Console.WriteLine($"[UPDATE] ZIP uploadan: {file.Length} bytes, verzija: {version}");
+        return Results.Json(new { success = true, message = $"ZIP uploadan ({file.Length / 1024} KB), verzija {version} objavljena!", version });
     }
     catch (Exception ex)
     {
@@ -381,42 +406,43 @@ app.MapGet("/update", () => Results.Content(@"<!DOCTYPE html>
 h1{color:#2c3e50}.box{border:2px dashed #3498db;padding:40px;text-align:center;border-radius:10px;margin:20px 0}
 .btn{background:#27ae60;color:#fff;padding:12px 30px;border:none;border-radius:5px;font-size:16px;cursor:pointer;margin:5px}
 .btn:hover{background:#229954}.btn-blue{background:#3498db}.btn-blue:hover{background:#2980b9}
-#status{margin:15px 0;font-size:14px;color:#555}input[type=text]{padding:8px;font-size:14px;width:200px;margin:5px}
+#status{margin:15px 0;font-size:14px;color:#555;padding:10px;border-radius:5px}
+.success{background:#d4edda;color:#155724}.error{background:#f8d7da;color:#721c24}.info{background:#d1ecf1;color:#0c5460}
 </style></head><body>
 <h1>📦 Upload ažuriranja</h1>
 <div class='box'>
-<p><strong>1. Odaberi ZIP:</strong></p>
-<input type='file' id='zipFile' accept='.zip'><br><br>
-<p><strong>2. Verzija:</strong></p>
-<input type='text' id='version' placeholder='npr. 1.0.200'><br><br>
-<p><strong>3. Changelog:</strong></p>
-<input type='text' id='changelog' placeholder='Opis promjena' style='width:400px'><br><br>
-<button class='btn' onclick='uploadAll()'>🚀 Upload i objavi</button>
-<button class='btn btn-blue' onclick='checkVersion()'>📋 Provjeri trenutnu verziju</button>
+<p><strong>Odaberi ZIP:</strong></p>
+<input type='file' id='zipFile' accept='.zip' style='margin:10px 0'><br><br>
+<button class='btn' onclick='uploadZip()'>🚀 Upload i objavi</button>
+<button class='btn btn-blue' onclick='checkVersion()'>📋 Trenutna verzija</button>
 </div>
-<div id='status'></div>
+<div id='status' class='info'>Učitavanje...</div>
 <script>
 async function checkVersion(){
   var r=await fetch('/api/version');var d=await r.json();
-  document.getElementById('status').innerHTML='<b>Trenutna verzija na serveru:</b> '+d.version+'<br>Download: '+d.downloadUrl;
+  document.getElementById('status').className='info';
+  document.getElementById('status').innerHTML='<b>Verzija na serveru:</b> '+d.version+'<br><b>Download:</b> '+d.downloadUrl;
 }
-async function uploadAll(){
+async function uploadZip(){
   var file=document.getElementById('zipFile').files[0];
-  var ver=document.getElementById('version').value.trim();
-  var cl=document.getElementById('changelog').value.trim();
   if(!file){alert('Odaberi ZIP!');return;}
-  if(!ver){alert('Upisi verziju!');return;}
-  document.getElementById('status').innerHTML='⏳ Uploading ZIP ('+Math.round(file.size/1024/1024)+' MB)...';
+  document.getElementById('status').className='info';
+  document.getElementById('status').innerHTML='⏳ Upload u tijeku... ('+Math.round(file.size/1024/1024)+' MB)';
   var fd=new FormData();fd.append('file',file);
-  var r1=await fetch('/api/version/upload',{method:'POST',body:fd});
-  var d1=await r1.json();
-  if(!d1.success){document.getElementById('status').innerHTML='❌ Greška: '+d1.message;return;}
-  document.getElementById('status').innerHTML='✅ ZIP uploadan! Postavljam verziju...';
-  var r2=await fetch('/api/version',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({Version:ver,DownloadUrl:window.location.origin+'/api/version/download',Changelog:cl||'Verzija '+ver})});
-  var d2=await r2.json();
-  if(d2.success){document.getElementById('status').innerHTML='✅ Verzija '+ver+' objavljena! Kase će automatski skinuti update.';}
-  else{document.getElementById('status').innerHTML='❌ Greška: '+d2.message;}
+  try{
+    var r=await fetch('/api/version/upload',{method:'POST',body:fd});
+    var d=await r.json();
+    if(d.success){
+      document.getElementById('status').className='success';
+      document.getElementById('status').innerHTML='✅ '+d.message;
+    } else {
+      document.getElementById('status').className='error';
+      document.getElementById('status').innerHTML='❌ '+d.message;
+    }
+  }catch(e){
+    document.getElementById('status').className='error';
+    document.getElementById('status').innerHTML='❌ Greška: '+e.message;
+  }
 }
 checkVersion();
 </script></body></html>", "text/html"));

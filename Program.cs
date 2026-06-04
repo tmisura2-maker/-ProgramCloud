@@ -374,6 +374,53 @@ app.MapGet("/api/version/download", async (HttpContext ctx) =>
     return Results.File(bytes, "application/zip", "RestaurantPOS_update.zip");
 });
 
+// Stranica za upload ažuriranja
+app.MapGet("/update", () => Results.Content(@"<!DOCTYPE html>
+<html><head><meta charset='UTF-8'><title>Upload ažuriranja</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:50px auto;padding:20px}
+h1{color:#2c3e50}.box{border:2px dashed #3498db;padding:40px;text-align:center;border-radius:10px;margin:20px 0}
+.btn{background:#27ae60;color:#fff;padding:12px 30px;border:none;border-radius:5px;font-size:16px;cursor:pointer;margin:5px}
+.btn:hover{background:#229954}.btn-blue{background:#3498db}.btn-blue:hover{background:#2980b9}
+#status{margin:15px 0;font-size:14px;color:#555}input[type=text]{padding:8px;font-size:14px;width:200px;margin:5px}
+</style></head><body>
+<h1>📦 Upload ažuriranja</h1>
+<div class='box'>
+<p><strong>1. Odaberi ZIP:</strong></p>
+<input type='file' id='zipFile' accept='.zip'><br><br>
+<p><strong>2. Verzija:</strong></p>
+<input type='text' id='version' placeholder='npr. 1.0.200'><br><br>
+<p><strong>3. Changelog:</strong></p>
+<input type='text' id='changelog' placeholder='Opis promjena' style='width:400px'><br><br>
+<button class='btn' onclick='uploadAll()'>🚀 Upload i objavi</button>
+<button class='btn btn-blue' onclick='checkVersion()'>📋 Provjeri trenutnu verziju</button>
+</div>
+<div id='status'></div>
+<script>
+async function checkVersion(){
+  var r=await fetch('/api/version');var d=await r.json();
+  document.getElementById('status').innerHTML='<b>Trenutna verzija na serveru:</b> '+d.version+'<br>Download: '+d.downloadUrl;
+}
+async function uploadAll(){
+  var file=document.getElementById('zipFile').files[0];
+  var ver=document.getElementById('version').value.trim();
+  var cl=document.getElementById('changelog').value.trim();
+  if(!file){alert('Odaberi ZIP!');return;}
+  if(!ver){alert('Upisi verziju!');return;}
+  document.getElementById('status').innerHTML='⏳ Uploading ZIP ('+Math.round(file.size/1024/1024)+' MB)...';
+  var fd=new FormData();fd.append('file',file);
+  var r1=await fetch('/api/version/upload',{method:'POST',body:fd});
+  var d1=await r1.json();
+  if(!d1.success){document.getElementById('status').innerHTML='❌ Greška: '+d1.message;return;}
+  document.getElementById('status').innerHTML='✅ ZIP uploadan! Postavljam verziju...';
+  var r2=await fetch('/api/version',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({Version:ver,DownloadUrl:window.location.origin+'/api/version/download',Changelog:cl||'Verzija '+ver})});
+  var d2=await r2.json();
+  if(d2.success){document.getElementById('status').innerHTML='✅ Verzija '+ver+' objavljena! Kase će automatski skinuti update.';}
+  else{document.getElementById('status').innerHTML='❌ Greška: '+d2.message;}
+}
+checkVersion();
+</script></body></html>", "text/html"));
+
 // ==================== BLAGAJNA SYNC ====================
 
 app.MapPost("/api/sync/order", async (HttpRequest req) =>

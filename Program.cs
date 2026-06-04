@@ -308,6 +308,33 @@ app.MapDelete("/api/admin/registers/{registerId}", (int registerId, HttpContext 
     return Results.Json(new { success = true, message = $"Obrisana blagajna sa {orderCount} racuna" });
 });
 
+// ==================== APP VERSION / UPDATE ====================
+
+app.MapGet("/api/version", () =>
+{
+    using var conn = new NpgsqlConnection(connStr);
+    conn.Open();
+    var latest = conn.QueryFirstOrDefault<dynamic>(
+        @"SELECT ""Version"", ""DownloadUrl"", ""Changelog"" FROM ""AppVersions"" ORDER BY ""Id"" DESC LIMIT 1");
+    if (latest == null)
+        return Results.Json(new { version = "0.0.0", downloadUrl = "", changelog = "" });
+    return Results.Json(new { version = (string)latest.Version, downloadUrl = (string)(latest.DownloadUrl ?? ""), changelog = (string)(latest.Changelog ?? "") });
+});
+
+app.MapPost("/api/version", async (HttpRequest req) =>
+{
+    var body = await new StreamReader(req.Body).ReadToEndAsync();
+    var data = JsonConvert.DeserializeObject<VersionData>(body);
+    if (data == null || string.IsNullOrEmpty(data.Version))
+        return Results.BadRequest("Nedostaje verzija");
+
+    using var conn = new NpgsqlConnection(connStr);
+    conn.Open();
+    conn.Execute(@"INSERT INTO ""AppVersions"" (""Version"", ""DownloadUrl"", ""Changelog"", ""CreatedAt"") VALUES (@Version, @DownloadUrl, @Changelog, @CreatedAt)",
+        new { data.Version, data.DownloadUrl, data.Changelog, CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") });
+    return Results.Json(new { success = true, message = $"Verzija {data.Version} spremljena" });
+});
+
 // ==================== BLAGAJNA SYNC ====================
 
 app.MapPost("/api/sync/order", async (HttpRequest req) =>

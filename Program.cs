@@ -335,6 +335,45 @@ app.MapPost("/api/version", async (HttpRequest req) =>
     return Results.Json(new { success = true, message = $"Verzija {data.Version} spremljena" });
 });
 
+// Upload ZIP za ažuriranje
+app.MapPost("/api/version/upload", async (HttpRequest req) =>
+{
+    try
+    {
+        var form = await req.ReadFormAsync();
+        var file = form.Files.FirstOrDefault();
+        if (file == null || file.Length == 0)
+            return Results.BadRequest("Nedostaje ZIP fajl");
+
+        var uploadDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "updates");
+        Directory.CreateDirectory(uploadDir);
+        var filePath = Path.Combine(uploadDir, "RestaurantPOS_update.zip");
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        Console.WriteLine($"[UPDATE] ZIP uploadan: {file.Length} bytes");
+        return Results.Json(new { success = true, message = $"ZIP uploadan ({file.Length} bytes)" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest($"Greška: {ex.Message}");
+    }
+}).DisableAntiforgery();
+
+// Download ZIP za ažuriranje
+app.MapGet("/api/version/download", async (HttpContext ctx) =>
+{
+    var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "updates", "RestaurantPOS_update.zip");
+    if (!File.Exists(filePath))
+        return Results.NotFound("ZIP nije dostupan");
+
+    var bytes = await File.ReadAllBytesAsync(filePath);
+    return Results.File(bytes, "application/zip", "RestaurantPOS_update.zip");
+});
+
 // ==================== BLAGAJNA SYNC ====================
 
 app.MapPost("/api/sync/order", async (HttpRequest req) =>

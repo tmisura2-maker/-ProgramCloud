@@ -596,7 +596,7 @@ app.MapGet("/api/admin/companies/{companyId}/orders", (int companyId, HttpContex
     if (!string.IsNullOrEmpty(jir)) { sql += @" AND o.""JIR"" LIKE @jir"; p.Add("jir", "%" + jir + "%"); }
     if (!string.IsNullOrEmpty(customer)) { sql += @" AND (o.""CustomerName"" LIKE @cust OR o.""CustomerOib"" LIKE @cust)"; p.Add("cust", "%" + customer + "%"); }
     if (nonFiscalized == true) { sql += @" AND o.""IsFiscalized"" = false"; }
-    sql += @" ORDER BY o.""ReceiptNumber"" DESC LIMIT 500";
+    sql += @" ORDER BY o.""ReceiptNumber"" DESC";
     return Results.Json(conn.Query(sql, p));
 });
 

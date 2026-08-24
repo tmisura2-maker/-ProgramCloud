@@ -827,6 +827,29 @@ app.MapFallback(async ctx =>
 
 app.Urls.Add("http://0.0.0.0:5100");
 Console.WriteLine("ProgramCloud pokrenut na http://localhost:5100");
+// ==================== JAVNI ENDPOINT ZA DOWNLOAD RAČUNA ====================
+
+app.MapGet("/api/sync/download", (string oib) =>
+{
+    if (string.IsNullOrEmpty(oib)) return Results.BadRequest("Nedostaje OIB");
+    using var conn = new NpgsqlConnection(connStr);
+    var company = conn.QueryFirstOrDefault<dynamic>("SELECT \"Id\" FROM \"Companies\" WHERE \"OIB\" = @oib", new { oib });
+    if (company == null) return Results.NotFound("Firma nije pronađena");
+
+    var orders = conn.Query(@"SELECT o.""LocalOrderId"", o.""ReceiptNumber"", o.""Total"", o.""PaymentMethod"",
+        o.""UserName"", o.""CustomerName"", o.""CustomerOib"", o.""CustomerAddress"", o.""CustomerCity"",
+        o.""Status"", o.""CreatedAt"", o.""CompletedAt"", o.""ItemsJson"",
+        o.""TipAmount"", o.""IsFiscalized"", o.""JIR"", o.""ZKI"", o.""FiscalizedAt"",
+        cr.""Code"" as ""RegisterCode"", bs.""Code"" as ""SpaceCode""
+        FROM ""Orders"" o
+        JOIN ""CashRegisters"" cr ON o.""CashRegisterId"" = cr.""Id""
+        JOIN ""BusinessSpaces"" bs ON cr.""BusinessSpaceId"" = bs.""Id""
+        WHERE bs.""CompanyId"" = @cid
+        ORDER BY o.""ReceiptNumber"" ASC",
+        new { cid = (int)company.Id });
+    return Results.Json(orders);
+});
+
 app.Run();
 
 // ==================== INIT DB ====================

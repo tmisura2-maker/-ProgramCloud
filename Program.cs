@@ -478,22 +478,23 @@ app.MapPost("/api/sync/order", async (HttpRequest req) =>
         conn.Execute(@"UPDATE ""Orders"" SET ""PaymentMethod"" = @payment, ""Total"" = @total, 
             ""Status"" = @status, ""CustomerName"" = @customer, ""CustomerOib"" = @customerOib,
             ""ItemsJson"" = @items, ""TipAmount"" = @tip, ""IsFiscalized"" = @fisc, 
-            ""JIR"" = @jir, ""ZKI"" = @zki, ""FiscalizedAt"" = @fiscAt
+            ""JIR"" = @jir, ""ZKI"" = @zki, ""FiscalizedAt"" = @fiscAt, ""TaxByRateJson"" = @taxByRate
             WHERE ""CashRegisterId"" = @rid AND ""LocalOrderId"" = @localId",
             new { rid = registerId, localId = o.LocalOrderId,
                 payment = o.PaymentMethod, total = o.Total, status = o.Status,
                 customer = o.CustomerName, customerOib = o.CustomerOib,
                 items = JsonConvert.SerializeObject(o.Items),
                 tip = o.TipAmount, fisc = o.IsFiscalized != 0, jir = o.JIR, zki = o.ZKI,
-                fiscAt = o.FiscalizedAt });
+                fiscAt = o.FiscalizedAt,
+                taxByRate = o.TaxByRate != null ? JsonConvert.SerializeObject(o.TaxByRate) : null });
         Console.WriteLine($"[SYNC] Račun #{o.ReceiptNumber} AŽURIRAN - {o.PaymentMethod} - {o.Total:F2} EUR");
         return Results.Json(new { success = true, inserted = 0, updated = 1, message = "Račun ažuriran" });
     }
 
     conn.Execute(@"INSERT INTO ""Orders"" (""CashRegisterId"", ""LocalOrderId"", ""ReceiptNumber"", ""Total"", ""PaymentMethod"",
-        ""UserName"", ""CustomerName"", ""CustomerOib"", ""CustomerAddress"", ""CustomerCity"", ""Status"", ""CreatedAt"", ""CompletedAt"", ""ItemsJson"", ""TipAmount"", ""IsFiscalized"", ""JIR"", ""ZKI"", ""FiscalizedAt"")
+        ""UserName"", ""CustomerName"", ""CustomerOib"", ""CustomerAddress"", ""CustomerCity"", ""Status"", ""CreatedAt"", ""CompletedAt"", ""ItemsJson"", ""TipAmount"", ""IsFiscalized"", ""JIR"", ""ZKI"", ""FiscalizedAt"", ""TaxByRateJson"")
         VALUES (@rid, @localId, @receiptNum, @total, @payment, @user, @customer, @customerOib, @custAddr, @custCity, @status,
-        @created, @completed, @items, @tip, @fisc, @jir, @zki, @fiscAt)",
+        @created, @completed, @items, @tip, @fisc, @jir, @zki, @fiscAt, @taxByRate)",
         new { rid = registerId, localId = o.LocalOrderId, receiptNum = o.ReceiptNumber,
             total = o.Total, payment = o.PaymentMethod, user = o.UserName,
             customer = o.CustomerName, customerOib = o.CustomerOib,
@@ -501,7 +502,8 @@ app.MapPost("/api/sync/order", async (HttpRequest req) =>
             created = o.CreatedAt, completed = o.CompletedAt,
             items = JsonConvert.SerializeObject(o.Items),
             tip = o.TipAmount, fisc = o.IsFiscalized != 0, jir = o.JIR, zki = o.ZKI,
-            fiscAt = o.FiscalizedAt });
+            fiscAt = o.FiscalizedAt,
+            taxByRate = o.TaxByRate != null ? JsonConvert.SerializeObject(o.TaxByRate) : null });
 
     Console.WriteLine($"[SYNC] Račun #{o.ReceiptNumber} od {data.CompanyName} ({data.CompanyOIB}) - {o.Total:F2} EUR");
     return Results.Json(new { success = true, inserted = 1, message = "Račun primljen" });
@@ -890,7 +892,9 @@ void InitDatabase(string cs)
         ""CustomerAddress"" TEXT, ""CustomerCity"" TEXT,
         ""Status"" TEXT, ""CreatedAt"" TEXT, ""CompletedAt"" TEXT, ""ItemsJson"" TEXT,
         ""TipAmount"" REAL DEFAULT 0, ""IsFiscalized"" BOOLEAN NOT NULL DEFAULT false,
-        ""JIR"" TEXT, ""ZKI"" TEXT, ""FiscalizedAt"" TEXT)");
+        ""JIR"" TEXT, ""ZKI"" TEXT, ""FiscalizedAt"" TEXT, ""TaxByRateJson"" TEXT)");
+    // Migracija: dodaj kolonu TaxByRateJson ako baza već postoji bez nje
+    conn.Execute(@"ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""TaxByRateJson"" TEXT");
     // Indeks za brzo agregiranje računa po blagajni (popis firmi / overview)
     conn.Execute(@"CREATE INDEX IF NOT EXISTS ""idx_orders_cashregister"" ON ""Orders"" (""CashRegisterId"")");
     conn.Execute(@"CREATE INDEX IF NOT EXISTS ""idx_orders_cashregister_fisc"" ON ""Orders"" (""CashRegisterId"", ""IsFiscalized"")");
@@ -925,8 +929,10 @@ record RegisterData(string? Code, string? RegistrationDate);
 record SyncOrderData(int LocalOrderId, int ReceiptNumber, decimal Total, string? PaymentMethod,
     string? UserName, string? CustomerName, string? CustomerOib, string? CustomerAddress, string? CustomerCity,
     string? Status, string? CreatedAt, string? CompletedAt,
-    decimal TipAmount, int IsFiscalized, string? JIR, string? ZKI, string? FiscalizedAt, List<SyncOrderItem>? Items);
+    decimal TipAmount, int IsFiscalized, string? JIR, string? ZKI, string? FiscalizedAt, List<SyncOrderItem>? Items,
+    List<SyncTaxRate>? TaxByRate = null);
 record SyncOrderItem(string Name, decimal Qty, decimal UnitPrice, decimal LineTotal, decimal Discount, decimal VatRate, decimal VatAmount, decimal PnpRate, decimal PnpAmount, decimal DiscountPercent = 0, decimal OriginalPrice = 0, string Category = "Ostalo", string Group = "Ostalo");
+record SyncTaxRate(string Type, decimal Rate, decimal Base, decimal Tax);
 record SyncOrderRequest(string CompanyOIB, string? CompanyName, string? CompanyAddress, string? CompanyCity,
     string? CompanyPostalCode, string? CompanyIBAN, string? CompanyTaxModel,
     string? BusinessSpaceCode, string? CashRegisterCode, SyncOrderData? Order);

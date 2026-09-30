@@ -729,13 +729,22 @@ app.MapGet("/api/admin/companies/overview", (HttpContext ctx) =>
 {
     if (!IsAdmin(ctx)) return Results.Unauthorized();
     using var conn = new NpgsqlConnection(connStr);
+    // Orders se agregira JEDNOM (GROUP BY) i spaja LEFT JOIN-om — bez koreliranih podupita po svakoj blagajni.
+    // Time upit ostaje brz i kod velikog broja blagajni (npr. 300+).
     var list = conn.Query(@"SELECT c.""Id"", c.""Name"", c.""OIB"",
         bs.""Code"" as ""SpaceCode"", cr.""Code"" as ""RegisterCode"", cr.""RegistrationDate"", cr.""IsActive"",
-        (SELECT MAX(o2.""CompletedAt"") FROM ""Orders"" o2 WHERE o2.""CashRegisterId"" = cr.""Id"") as ""LastOrderDate"",
-        (SELECT COUNT(*) FROM ""Orders"" o3 WHERE o3.""CashRegisterId"" = cr.""Id"" AND o3.""IsFiscalized"" = false) as ""NonFiscalized""
+        agg.""LastOrderDate"",
+        COALESCE(agg.""NonFiscalized"", 0) as ""NonFiscalized""
         FROM ""Companies"" c
         JOIN ""BusinessSpaces"" bs ON c.""Id"" = bs.""CompanyId""
         JOIN ""CashRegisters"" cr ON bs.""Id"" = cr.""BusinessSpaceId""
+        LEFT JOIN (
+            SELECT ""CashRegisterId"",
+                MAX(""CompletedAt"") as ""LastOrderDate"",
+                COUNT(*) FILTER (WHERE ""IsFiscalized"" = false) as ""NonFiscalized""
+            FROM ""Orders""
+            GROUP BY ""CashRegisterId""
+        ) agg ON agg.""CashRegisterId"" = cr.""Id""
         ORDER BY c.""OIB"", bs.""Code"", cr.""Code""");
     return Results.Json(list);
 });
@@ -882,6 +891,9 @@ void InitDatabase(string cs)
         ""Status"" TEXT, ""CreatedAt"" TEXT, ""CompletedAt"" TEXT, ""ItemsJson"" TEXT,
         ""TipAmount"" REAL DEFAULT 0, ""IsFiscalized"" BOOLEAN NOT NULL DEFAULT false,
         ""JIR"" TEXT, ""ZKI"" TEXT, ""FiscalizedAt"" TEXT)");
+    // Indeks za brzo agregiranje računa po blagajni (popis firmi / overview)
+    conn.Execute(@"CREATE INDEX IF NOT EXISTS ""idx_orders_cashregister"" ON ""Orders"" (""CashRegisterId"")");
+    conn.Execute(@"CREATE INDEX IF NOT EXISTS ""idx_orders_cashregister_fisc"" ON ""Orders"" (""CashRegisterId"", ""IsFiscalized"")");
     conn.Execute(@"CREATE TABLE IF NOT EXISTS ""DailyClosings"" (
         ""Id"" SERIAL PRIMARY KEY, ""CashRegisterId"" INTEGER,
         ""ClosingNumber"" INTEGER, ""ClosedAt"" TEXT, ""TotalRevenue"" REAL,

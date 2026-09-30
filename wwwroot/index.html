@@ -236,33 +236,19 @@ function loadKnjiga(cid){_kpCompanyId=cid;var f=document.getElementById('kpFrom'
 function renderKnjiga(){
   var orders=_kpOrders;var c=document.getElementById('knjigaContent');
   if(!orders.length){c.innerHTML='<p style="color:#999">Nema racuna za odabrani period</p>';return;}
-  function r2(x){return Math.round((x+Number.EPSILON)*100)/100;}
-  /* Izracun poreza po racunu identicno kasi (CalcTaxByReceipt): grupiraj stavke po (VatRate,PnpRate) kombinaciji. */
-  function calcRacun(items){
-    var g={};
-    for(var j=0;j<items.length;j++){var it=items[j];var vr=Number(it.VatRate||0);var pr=Number(it.PnpRate||0);if(vr<=0&&pr<=0)continue;
-      var key=vr+'_'+pr;if(!g[key])g[key]={vr:vr,pr:pr,mpc:0,base:0};
-      var mpc=Number(it.OriginalPrice||0);var qty=Number(it.Qty||0);var disc=Number(it.DiscountPercent||0);
-      var div=1+vr/100+pr/100;
-      if(mpc>0){var m=mpc;if(disc>0)m=m*(1-disc/100);var tot=m*qty;g[key].mpc+=tot;g[key].base+=tot/div;}
-      else{var ib=Number(it.UnitPrice||0)*qty;g[key].base+=ib;g[key].mpc+=ib*div;}
-    }
-    var out=[];
-    for(var k in g){var gg=g[k];var osn=r2(gg.base);var mpcR=r2(gg.mpc);var pnp=gg.pr>0?r2(osn*gg.pr/100):0;var pdv=r2(mpcR-osn-pnp);out.push({vr:gg.vr,pr:gg.pr,base:osn,pdv:pdv,pnp:pnp});}
-    return out;
-  }
+  /* IDENTICNO KASI: zbroji spremljene iznose iz stavki (VatAmount, PnpAmount, UnitPrice*Qty) po kombinaciji (VatRate,PnpRate) u punoj preciznosti, zaokruzi TEK na kraju. */
   var dani={},rekap={};
   for(var i=0;i<orders.length;i++){var o=orders[i];
     var dan=(o.CompletedAt||o.CreatedAt||'').substring(0,10);var num=Number(o.ReceiptNumber||o.LocalOrderId||0);var sc=o.SpaceCode||'';var cc=o.RegisterCode||'';
     if(!dani[dan])dani[dan]={osn:0,pdv:0,pnp:0,uk:0,br:0,minN:null,maxN:null,sc:sc,cc:cc};var kd=dani[dan];kd.br++;kd.uk+=Number(o.Total||0);
     if(num>0){if(kd.minN===null||num<kd.minN)kd.minN=num;if(kd.maxN===null||num>kd.maxN)kd.maxN=num;}
     var items=[];try{items=JSON.parse(o.ItemsJson||'[]');}catch(e){}
-    var parts=calcRacun(items);
-    for(var pi=0;pi<parts.length;pi++){var pt=parts[pi];
-      kd.osn+=pt.base;kd.pdv+=pt.pdv;kd.pnp+=pt.pnp;
-      var lbl=(pt.vr>0?('PDV ('+pt.vr+'%)'):'')+(pt.vr>0&&pt.pr>0?', ':'')+(pt.pr>0?('PNP ('+pt.pr+'%)'):'');
+    for(var j=0;j<items.length;j++){var it=items[j];var vr=Number(it.VatRate||0);var pr=Number(it.PnpRate||0);if(vr<=0&&pr<=0)continue;
+      var base=Number(it.UnitPrice||0)*Number(it.Qty||0);var va=Number(it.VatAmount||0);var pa=Number(it.PnpAmount||0);
+      kd.osn+=base;kd.pdv+=va;kd.pnp+=pa;
+      var lbl=(vr>0?('PDV ('+vr+'%)'):'')+(vr>0&&pr>0?', ':'')+(pr>0?('PNP ('+pr+'%)'):'');
       if(!rekap[lbl])rekap[lbl]={osn:0,pdv:0,pnp:0};
-      rekap[lbl].osn+=pt.base;rekap[lbl].pdv+=pt.pdv;rekap[lbl].pnp+=pt.pnp;
+      rekap[lbl].osn+=base;rekap[lbl].pdv+=va;rekap[lbl].pnp+=pa;
     }
   }
   var f=document.getElementById('kpFrom').value,t=document.getElementById('kpTo').value;

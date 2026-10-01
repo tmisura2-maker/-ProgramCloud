@@ -236,8 +236,8 @@ function loadKnjiga(cid){_kpCompanyId=cid;var f=document.getElementById('kpFrom'
 function renderKnjiga(){
   var orders=_kpOrders;var c=document.getElementById('knjigaContent');
   if(!orders.length){c.innerHTML='<p style="color:#999">Nema racuna za odabrani period</p>';return;}
-  /* IDENTICNO KASI: zbroji spremljene iznose iz stavki (VatAmount, PnpAmount, UnitPrice*Qty) po kombinaciji (VatRate,PnpRate) u punoj preciznosti, zaokruzi TEK na kraju. */
-  var dani={},rekap={};
+  /* IDENTICNO KASI: PDV grupiran po PDV stopi (sve zajedno), PNP zaseban red po PNP stopi. UKUPNO = stvarni promet bez dupliranja. */
+  var dani={},pdvRekap={},pnpRekap={},totOsn=0,totPdv=0,totPnp=0;
   for(var i=0;i<orders.length;i++){var o=orders[i];
     var dan=(o.CompletedAt||o.CreatedAt||'').substring(0,10);var num=Number(o.ReceiptNumber||o.LocalOrderId||0);var sc=o.SpaceCode||'';var cc=o.RegisterCode||'';
     if(!dani[dan])dani[dan]={osn:0,pdv:0,pnp:0,uk:0,br:0,minN:null,maxN:null,sc:sc,cc:cc};var kd=dani[dan];kd.br++;kd.uk+=Number(o.Total||0);
@@ -246,9 +246,9 @@ function renderKnjiga(){
     for(var j=0;j<items.length;j++){var it=items[j];var vr=Number(it.VatRate||0);var pr=Number(it.PnpRate||0);if(vr<=0&&pr<=0)continue;
       var base=Number(it.UnitPrice||0)*Number(it.Qty||0);var va=Number(it.VatAmount||0);var pa=Number(it.PnpAmount||0);
       kd.osn+=base;kd.pdv+=va;kd.pnp+=pa;
-      var lbl=(vr>0?('PDV ('+vr+'%)'):'')+(vr>0&&pr>0?', ':'')+(pr>0?('PNP ('+pr+'%)'):'');
-      if(!rekap[lbl])rekap[lbl]={osn:0,pdv:0,pnp:0};
-      rekap[lbl].osn+=base;rekap[lbl].pdv+=va;rekap[lbl].pnp+=pa;
+      totOsn+=base;totPdv+=va;totPnp+=pa;
+      if(vr>0){if(!pdvRekap[vr])pdvRekap[vr]={osn:0,pdv:0};pdvRekap[vr].osn+=base;pdvRekap[vr].pdv+=va;}
+      if(pr>0){if(!pnpRekap[pr])pnpRekap[pr]={osn:0,pnp:0};pnpRekap[pr].osn+=base;pnpRekap[pr].pnp+=pa;}
     }
   }
   var f=document.getElementById('kpFrom').value,t=document.getElementById('kpTo').value;
@@ -266,9 +266,12 @@ function renderKnjiga(){
   h+='<tr style="font-weight:bold;background:#ddd"><td style="padding:4px 6px">UKUPNO</td><td></td><td></td><td></td><td style="text-align:right;padding:4px 6px">'+fmtMoney(TO)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(TP)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(TN)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(TU)+'</td></tr></tbody></table>';
   h+='<div style="font-size:14px;font-weight:bold;margin:15px 0 5px">REKAPITULACIJA POREZA</div>';
   h+='<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;'+THs+'">Porez</th><th style="text-align:right;'+THs+'">Osnovica</th><th style="text-align:right;'+THs+'">PDV</th><th style="text-align:right;'+THs+'">PNP</th><th style="text-align:right;'+THs+'">Ukupno</th></tr></thead><tbody>';
-  var sr=Object.keys(rekap).sort();var RO=0,RP=0,RN=0,RU=0;
-  for(var ri=0;ri<sr.length;ri++){var rk=sr[ri];var rv=rekap[rk];var ru=rv.osn+rv.pdv+rv.pnp;RO+=rv.osn;RP+=rv.pdv;RN+=rv.pnp;RU+=ru;var zeb2=(ri%2===1)?' background:#f5f5f5;':'';h+='<tr style="'+zeb2+'"><td style="padding:3px 6px">'+rk+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.osn)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.pdv)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.pnp)+'</td><td style="text-align:right;padding:3px 6px;font-weight:bold">'+fmtMoney(ru)+'</td></tr>';}
-  h+='<tr style="font-weight:bold;background:#ddd"><td style="padding:4px 6px">UKUPNO</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(RO)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(RP)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(RN)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(RU)+'</td></tr></tbody></table>';
+  var zi=0;
+  var pdvKeys=Object.keys(pdvRekap).map(Number).sort(function(a,b){return b-a;});
+  for(var pi=0;pi<pdvKeys.length;pi++){var vr=pdvKeys[pi];var rv=pdvRekap[vr];var ru=rv.osn+rv.pdv;var zeb2=(zi++%2===1)?' background:#f5f5f5;':'';h+='<tr style="'+zeb2+'"><td style="padding:3px 6px">PDV ('+vr+'%)</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.osn)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.pdv)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(0)+'</td><td style="text-align:right;padding:3px 6px;font-weight:bold">'+fmtMoney(ru)+'</td></tr>';}
+  var pnpKeys=Object.keys(pnpRekap).map(Number).sort(function(a,b){return b-a;});
+  for(var ni=0;ni<pnpKeys.length;ni++){var pr=pnpKeys[ni];var rv=pnpRekap[pr];var ru=rv.osn+rv.pnp;var zeb2=(zi++%2===1)?' background:#f5f5f5;':'';h+='<tr style="'+zeb2+'"><td style="padding:3px 6px">PNP ('+pr+'%)</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.osn)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(0)+'</td><td style="text-align:right;padding:3px 6px">'+fmtMoney(rv.pnp)+'</td><td style="text-align:right;padding:3px 6px;font-weight:bold">'+fmtMoney(ru)+'</td></tr>';}
+  h+='<tr style="font-weight:bold;background:#ddd"><td style="padding:4px 6px">UKUPNO</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(totOsn)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(totPdv)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(totPnp)+'</td><td style="text-align:right;padding:4px 6px">'+fmtMoney(totOsn+totPdv+totPnp)+'</td></tr></tbody></table>';
   c.innerHTML=h;
 }
 function printKnjigaA4(){var content=document.getElementById('knjigaContent');if(!content||!content.innerHTML.trim()){alert('Prvo generirajte knjigu.');return;}var win=window.open('','_blank');win.document.write('<html><head><title>Knjiga prometa</title><style>@page{size:A4;margin:15mm;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:12px;}table{width:100%;border-collapse:collapse;margin:4px 0;}th,td{padding:3px 6px;}</style></head><body>'+content.innerHTML+'</body></html>');win.document.close();win.focus();setTimeout(function(){win.print();},300);}
